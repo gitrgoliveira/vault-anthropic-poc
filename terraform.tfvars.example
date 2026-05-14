@@ -1,0 +1,21 @@
+vault_address = "https://vault-cluster.vault.xxxxxxxx.aws.hashicorp.cloud:8200"
+vault_token   = "hvs.REPLACE_ME"
+
+# Override the default environments map if needed:
+# environments = {
+#   research = {
+#     environment = "research"
+#     team        = "research-team"
+#     group_name  = "research-team"
+#   }
+#   build = {
+#     environment = "build"
+#     team        = "ci-runners"
+#     group_name  = "ci-runners"
+#   }
+#   prod = {
+#     environment = "production"
+#     team        = "ai-platform"
+#     group_name  = "ai-platform"
+#   }
+# }

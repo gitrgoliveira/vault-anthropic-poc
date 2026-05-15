@@ -22,8 +22,6 @@ import base64
 import json
 import os
 import sys
-import tempfile
-import atexit
 
 import hvac
 
@@ -117,14 +115,7 @@ def main():
     # 4. Write JWT to a temp file and configure Anthropic SDK env vars
     # -------------------------------------------------------------------------
     print("[3/4] Configuring Anthropic federation environment...")
-    token_file = tempfile.NamedTemporaryFile(
-        mode="w", suffix=".jwt", prefix="anthropic_token_", delete=False
-    )
-    token_file.write(jwt_token)
-    token_file.close()
-    atexit.register(lambda: os.unlink(token_file.name) if os.path.exists(token_file.name) else None)
-
-    os.environ["ANTHROPIC_IDENTITY_TOKEN_FILE"] = token_file.name
+    os.environ["ANTHROPIC_IDENTITY_TOKEN"] = jwt_token
     os.environ["ANTHROPIC_ORGANIZATION_ID"] = anthropic_org_id
     os.environ["ANTHROPIC_FEDERATION_RULE_ID"] = federation_rule_id
     os.environ["ANTHROPIC_SERVICE_ACCOUNT_ID"] = service_account_id
@@ -135,7 +126,6 @@ def main():
     os.environ.pop("ANTHROPIC_API_KEY", None)
     os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-    print(f"       Token written to {token_file.name}")
     print(f"       ANTHROPIC_FEDERATION_RULE_ID = {federation_rule_id}")
     print(f"       ANTHROPIC_SERVICE_ACCOUNT_ID = {service_account_id}")
     if workspace_id:
@@ -179,9 +169,6 @@ def main():
     print(f"Response: {message.content[0].text}")
     print(f"Usage:    {message.usage.input_tokens} input, {message.usage.output_tokens} output tokens")
     print("=" * 60)
-
-    # Clean up temp file
-    os.unlink(token_file.name)
 
 
 if __name__ == "__main__":

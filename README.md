@@ -1,147 +1,62 @@
-# Vault OIDC → Anthropic Workload Identity Federation
+# Vault → Anthropic Workload Identity Federation Guides
 
-> Companion repository for the blog post [Secure AI workloads with Vault OIDC and Anthropic federation]().
+This repository contains two self-contained guides for replacing static Anthropic API keys with short-lived federated credentials issued by Vault.
 
-Replace static `sk-ant-...` API keys with ephemeral, identity-bound tokens by configuring HashiCorp Vault as an OIDC issuer for [Anthropic Workload Identity Federation](https://platform.claude.com/docs/en/manage-claude/workload-identity-federation).
+## Choose a guide
 
-## How it works
+| Guide | Use when | Path |
+| :--- | :--- | :--- |
+| Vault OIDC | You want to use Vault's identity engine as an OIDC issuer. | [`vault-oidc/`](vault-oidc/README.md) |
+| Vault SPIFFE | You are already using SPIFFE identities and want Vault to mint SPIFFE JWT-SVIDs for Anthropic. Requires the Vault Enterprise SPIFFE secrets engine. | [`vault-spiffe/`](vault-spiffe/README.md) |
 
-```
-Workload → AppRole auth → Vault (OIDC issuer) → signed JWT
-         → POST /v1/oauth/token → Anthropic (verifies JWT via JWKS)
-         → short-lived access token → Claude API
-```
+## Comparison
 
-1. A workload authenticates to Vault using AppRole (or any supported auth method).
-2. Vault mints a signed JWT with the workload's identity claims and `aud: https://api.anthropic.com`.
-3. The Anthropic SDK exchanges the JWT for a short-lived access token via the `/v1/oauth/token` endpoint.
-4. The SDK calls the Claude API with the access token and refreshes it automatically before expiry.
+| Aspect | Vault OIDC | Vault SPIFFE |
+| :--- | :--- | :--- |
+| Vault feature | Identity engine | SPIFFE secrets engine |
+| Anthropic matcher style | CEL over claims and groups | `subject_prefix` plus `audience` |
+| Token type | OIDC JWT | SPIFFE JWT-SVID |
+| Vault edition | Community or Enterprise | Enterprise |
+| Best fit | Existing Vault identity workflows | SPIFFE-oriented workload identity |
 
-No static Anthropic API key is created, distributed, or stored.
+## Repository layout
 
-## What Terraform creates
-
-| Resource | Count | Description |
-| :--- | :---: | :--- |
-| OIDC signing key | 1 | RS256, 24h rotation, scoped to `https://api.anthropic.com` |
-| OIDC roles | 3 | One per environment (`research`, `build`, `prod`) |
-| AppRole auth backend | 1 | With 3 roles for demo workloads |
-| Identity entities | 3 | Each carrying `environment` and `team` metadata |
-| Identity groups | 3 | `research-team`, `ci-runners`, `ai-platform` |
-| Vault policies | 3 | Scoped to each environment's OIDC and AppRole paths |
-
-### Environments
-
-| Environment | OIDC role | Identity group | Intended consumer |
-| :--- | :--- | :--- | :--- |
-| Research | `anthropic-research-role` | `research-team` | Interactive exploration |
-| Build | `anthropic-build-role` | `ci-runners` | CI/CD pipelines |
-| Production | `anthropic-prod-role` | `ai-platform` | Runtime services |
-
-## Prerequisites
-
-- [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.10
-- [Vault CLI](https://developer.hashicorp.com/vault/install) ≥ 1.12
-- A Vault cluster (HCP Vault or self-managed) with the identity engine enabled
-- An [Anthropic organization](https://console.anthropic.com) with API credits and Workload Identity Federation enabled
-- Python 3.9+ and `jq`
-
-## Quick start
-
-### 1. Configure Terraform variables
-
-```bash
-cp terraform.tfvars.example terraform.tfvars
-# Edit with your Vault address and token
+```text
+.
+├── LICENSE
+├── README.md
+├── vault-oidc/
+│   ├── README.md
+│   ├── ANTHROPIC_SETUP.md
+│   ├── Makefile
+│   ├── *.tf
+│   └── scripts/
+└── vault-spiffe/
+    ├── README.md
+    ├── ANTHROPIC_SETUP.md
+    ├── Makefile
+    ├── *.tf
+    └── scripts/
 ```
 
-### 2. Apply Terraform
+## A note on AppRole
 
-```bash
-make init
-make plan   # review the changes
-make apply
-```
+Both guides use [AppRole](https://developer.hashicorp.com/vault/docs/auth/approle) for workload authentication because it is simple to demonstrate end-to-end in a POC. In production you would typically replace it with:
 
-### 3. Configure the Anthropic Console
+- [**Vault Agent**](https://developer.hashicorp.com/vault/docs/agent-and-proxy/agent) for VM or bare-metal workloads, which handles login, token renewal, and secret templating automatically.
+- [**Vault Secrets Operator**](https://developer.hashicorp.com/vault/docs/platform/k8s/vso) (VSO) for Kubernetes workloads, which syncs Vault secrets into native Kubernetes Secrets and manages lifecycle without application-side code.
 
-Run the interactive wizard — it reads Terraform outputs, provides copy-paste values for each Console step, and writes a `.env` file:
+The federation flow itself (mint a JWT, exchange it with Anthropic) is identical regardless of which auth method delivers the Vault token to your workload.
 
-```bash
-make setup-anthropic
-```
+## Start here
 
-For manual instructions, see [ANTHROPIC_SETUP.md](ANTHROPIC_SETUP.md).
+Pick one directory and follow its guide from start to finish:
 
-### 4. Run the federation test
+- [`vault-oidc/README.md`](vault-oidc/README.md)
+- [`vault-spiffe/README.md`](vault-spiffe/README.md)
 
-```bash
-source .env
-
-# Generate an AppRole secret ID
-make secret-id ENV=research
-export VAULT_APPROLE_SECRET_ID=<secret_id from above>
-
-# Set the Anthropic IDs (the wizard writes per-environment variables)
-export ANTHROPIC_FEDERATION_RULE_ID=$ANTHROPIC_RESEARCH_FEDERATION_RULE_ID
-export ANTHROPIC_SERVICE_ACCOUNT_ID=$ANTHROPIC_RESEARCH_SERVICE_ACCOUNT_ID
-
-# Run the end-to-end test
-make test ENV=research
-```
-
-The test script authenticates to Vault via AppRole, mints an OIDC token, exchanges it with Anthropic, and makes a Claude API call — all without a static API key.
-
-## Repository structure
-
-```
-├── auth.tf                  # AppRole auth backend, roles, and secret ID access
-├── identity.tf              # Entities, groups, and group memberships
-├── oidc.tf                  # OIDC key, roles, issuer config, and allowed client IDs
-├── policies.tf              # Per-environment Vault policies
-├── providers.tf             # Terraform provider configuration
-├── variables.tf             # Input variables
-├── outputs.tf               # OIDC URLs, role IDs, and Console setup instructions
-├── terraform.tfvars.example # Example variable values
-├── Makefile                 # Workflow targets (init, apply, test, etc.)
-├── ANTHROPIC_SETUP.md       # Manual Anthropic Console setup instructions
-└── scripts/
-    ├── requirements.txt     # Python dependencies (anthropic, hvac)
-    ├── setup_anthropic.py   # Interactive Console setup wizard
-    └── test_federation.py   # End-to-end federation test
-```
-
-## Make targets
-
-```
-make help             Show all targets and workflow
-make init             Terraform init
-make plan             Terraform plan
-make apply            Terraform apply
-make setup-anthropic  Interactive Anthropic Console wizard
-make check-oidc       Verify OIDC discovery and JWKS endpoints
-make secret-id        Generate an AppRole secret ID (ENV=research|build|prod)
-make test             Run the federation test (ENV=research|build|prod)
-make outputs          Show all Terraform outputs
-make clean            Remove virtualenv and Terraform working files
-```
-
-## Network considerations
-
-Anthropic must reach Vault's JWKS endpoint to verify token signatures. Three options are covered in the blog post:
-
-| Mode | How it works |
-| :--- | :--- |
-| **Edge proxy** | Expose only the OIDC discovery/JWKS paths through an ingress proxy. Simplest option. |
-| **Zero trust tunnel** | Outbound-only tunnel publishes the JWKS endpoint. No inbound firewall changes. |
-| **Inline JWKS** | Push Vault's public keys to Anthropic. Vault stays fully private; requires a key-sync job. |
-
-If your Vault cluster serves on a non-443 port (e.g. HCP Vault on `:8200`), the setup wizard auto-detects this and guides you through inline JWKS mode.
-
-## Cleanup
-
-When you finish the demo, remove the issuer, service accounts, and federation rules from the Anthropic Claude Console.
+Each guide is independent. They keep their own Terraform, scripts, and local `.env` file.
 
 ## License
 
-This project is licensed under the Mozilla Public License 2.0 (MPL-2.0) — see [LICENSE](LICENSE) for details.
+This project is licensed under the Mozilla Public License 2.0 (MPL-2.0). See [LICENSE](LICENSE).

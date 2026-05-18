@@ -1,0 +1,22 @@
+vault_address = "https://vault-cluster.vault.xxxxxxxx.aws.hashicorp.cloud:8200"
+vault_token   = "hvs.REPLACE_ME"
+trust_domain  = "ai.internal"
+
+# Override the default environments map if needed:
+# environments = {
+#   research = {
+#     environment    = "research"
+#     team           = "research-team"
+#     spiffe_id_path = "/workload/research"
+#   }
+#   build = {
+#     environment    = "build"
+#     team           = "ci-runners"
+#     spiffe_id_path = "/workload/build"
+#   }
+#   prod = {
+#     environment    = "production"
+#     team           = "ai-platform"
+#     spiffe_id_path = "/workload/prod"
+#   }
+# }

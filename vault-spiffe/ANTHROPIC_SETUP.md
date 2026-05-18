@@ -19,22 +19,21 @@ Go to **Settings → Workload identity → Issuers** tab → **Create issuer**.
 
 | Field | Value |
 | :---- | :---- |
-| Name | `hcp-vault` |
-| Issuer URL | `<oidc_issuer_url from Terraform output>` |
+| Name | `hcp-vault-spiffe` |
+| Issuer URL | `<spiffe_issuer_url from Terraform output>` |
 | JWKS source | `inline` |
 | Inline keys | `<see below>` |
 
 > **Why inline?** Anthropic requires issuer URLs on port 443 for `discovery`
-> mode, but HCP Vault serves on port 8200. In `inline` mode the Issuer URL is
+> mode, but HCP Vault often serves on port 8200. In `inline` mode the Issuer URL is
 > only used for string comparison against the JWT `iss` claim and is never
 > fetched, so non-443 ports work. You must update the inline keys whenever
-> Vault rotates its signing key (default: every 24 hours, see `rotation_period`
-> in `oidc.tf`).
+> Vault rotates its signing key (default: every 24 hours, controlled by `key_lifetime` in `spiffe.tf`).
 
 Fetch the current JWKS keys array from Vault:
 
 ```bash
-curl -s "$(terraform output -raw oidc_jwks_url)" | jq .keys
+curl -s "$(terraform output -raw spiffe_jwks_url)" | jq .keys
 ```
 
 Paste the resulting JSON array into the **Inline keys** field.
@@ -47,9 +46,9 @@ Create one per environment:
 
 | Name | Description |
 | :---- | :---- |
-| `research-worker` | Research environment workloads |
-| `build-worker` | CI/CD pipeline workloads |
-| `prod-worker` | Production runtime workloads |
+| `spiffe-research-worker` | Research environment workloads |
+| `spiffe-build-worker` | CI/CD pipeline workloads |
+| `spiffe-prod-worker` | Production runtime workloads |
 
 Add each service account to its corresponding workspace from that workspace's
 **Members** page. Note the service account IDs (`svac_...`).
@@ -58,42 +57,39 @@ Add each service account to its corresponding workspace from that workspace's
 
 Go to **Settings → Workload identity → Federation rules** tab → **Create rule**.
 
-### research-rule
+### spiffe-research-rule
 
 | Field | Value |
 | :---- | :---- |
-| Name | `research-rule` |
-| Issuer | `hcp-vault` |
-| Match type | CEL |
+| Name | `spiffe-research-rule` |
+| Issuer | `hcp-vault-spiffe` |
+| Subject prefix | `<spiffe_subjects.research from Terraform output>` |
 | Audience | `https://api.anthropic.com` |
-| Condition | `claims.metadata.environment == "research" && "research-team" in claims.groups` |
-| Target | `research-worker` service account |
+| Target | `spiffe-research-worker` service account |
 | OAuth scope | `workspace:developer` |
 | Token lifetime | `3600` |
 
-### build-rule
+### spiffe-build-rule
 
 | Field | Value |
 | :---- | :---- |
-| Name | `build-rule` |
-| Issuer | `hcp-vault` |
-| Match type | CEL |
+| Name | `spiffe-build-rule` |
+| Issuer | `hcp-vault-spiffe` |
+| Subject prefix | `<spiffe_subjects.build from Terraform output>` |
 | Audience | `https://api.anthropic.com` |
-| Condition | `claims.metadata.environment == "build" && "ci-runners" in claims.groups` |
-| Target | `build-worker` service account |
+| Target | `spiffe-build-worker` service account |
 | OAuth scope | `workspace:developer` |
 | Token lifetime | `3600` |
 
-### prod-rule
+### spiffe-prod-rule
 
 | Field | Value |
 | :---- | :---- |
-| Name | `prod-rule` |
-| Issuer | `hcp-vault` |
-| Match type | CEL |
+| Name | `spiffe-prod-rule` |
+| Issuer | `hcp-vault-spiffe` |
+| Subject prefix | `<spiffe_subjects.prod from Terraform output>` |
 | Audience | `https://api.anthropic.com` |
-| Condition | `claims.metadata.environment == "production" && "ai-platform" in claims.groups` |
-| Target | `prod-worker` service account |
+| Target | `spiffe-prod-worker` service account |
 | OAuth scope | `workspace:developer` |
 | Token lifetime | `3600` |
 
@@ -109,4 +105,4 @@ You need three IDs per environment:
 | `ANTHROPIC_FEDERATION_RULE_ID` | The `fdrl_...` ID from the rule you created |
 | `ANTHROPIC_SERVICE_ACCOUNT_ID` | The `svac_...` ID from the service account |
 
-See the [README](README.md) for how to run the test script with these values.
+Refer to the [README](README.md) for how to run the test script with these values.

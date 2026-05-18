@@ -1,4 +1,4 @@
-# Vault → Anthropic Workload Identity Federation Guides
+# Vault → Anthropic - Workload Identity Federation Guides
 
 This repository contains two self-contained guides for replacing static Anthropic API keys with short-lived federated credentials issued by Vault.
 

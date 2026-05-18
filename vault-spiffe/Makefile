@@ -75,7 +75,7 @@ secret-id: ## Generate an AppRole secret ID (set ENV=research|build|prod)
 	VAULT_TOKEN=$${VAULT_TOKEN:-$$(grep -E '^\s*vault_token' terraform.tfvars | sed 's/.*= *"\(.*\)"/\1/' | head -1)} && \
 	if [ -z "$$VAULT_TOKEN" ]; then echo "ERROR: Set VAULT_TOKEN or add vault_token to terraform.tfvars"; exit 1; fi && \
 	VAULT_ADDR="$$VAULT_ADDR" VAULT_NAMESPACE="$(VAULT_NS)" VAULT_TOKEN="$$VAULT_TOKEN" \
-	vault write -f "auth/approle/role/$(ENV)-workload/secret-id"
+	vault write -f "auth/spiffe-approle/role/$(ENV)-workload/secret-id"
 
 # ─── Python virtualenv ──────────────────────────────────────────────────────
 venv: $(VENV_DIR)/bin/activate ## Create Python virtualenv and install dependencies

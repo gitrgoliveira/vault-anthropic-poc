@@ -1,18 +1,22 @@
 # -----------------------------------------------------------------------------
 # OIDC discovery URLs — needed for Anthropic issuer registration
 # -----------------------------------------------------------------------------
+locals {
+  oidc_issuer_base_url = "${var.vault_address}/v1/${join("/", compact([var.vault_namespace, "identity/oidc"]))}"
+}
+
 output "oidc_issuer_url" {
-  value       = "${var.vault_address}/v1/${var.vault_namespace}/identity/oidc"
+  value       = local.oidc_issuer_base_url
   description = "Register this as the Issuer URL in the Anthropic Claude Console."
 }
 
 output "oidc_discovery_url" {
-  value       = "${var.vault_address}/v1/${var.vault_namespace}/identity/oidc/.well-known/openid-configuration"
+  value       = "${local.oidc_issuer_base_url}/.well-known/openid-configuration"
   description = "OIDC discovery document URL. Anthropic fetches this in discovery JWKS mode."
 }
 
 output "oidc_jwks_url" {
-  value       = "${var.vault_address}/v1/${var.vault_namespace}/identity/oidc/.well-known/keys"
+  value       = "${local.oidc_issuer_base_url}/.well-known/keys"
   description = "JWKS URL containing the public signing keys."
 }
 
@@ -69,7 +73,7 @@ output "anthropic_console_instructions" {
 
     1. Go to Settings → Workload identity → Issuers tab
        - Name:       hcp-vault
-       - Issuer URL: ${var.vault_address}/v1/${var.vault_namespace}/identity/oidc
+       - Issuer URL: ${local.oidc_issuer_base_url}
        - JWKS mode:  inline (port 8200 requires inline; fetch keys with make check-jwks)
 
     2. Go to Settings → Service accounts

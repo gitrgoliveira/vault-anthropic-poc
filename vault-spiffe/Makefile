@@ -32,6 +32,9 @@ help: ## Show this help
 	@echo "Variables:"
 	@echo "  ENV                  Environment to target (research, build, prod). Default: research"
 	@echo "  VAULT_NS             Vault namespace. Default: admin"
+	@echo "  VAULT_ADDR           Vault URL fallback for plan/apply/destroy"
+	@echo "  VAULT_TOKEN          Vault token fallback for plan/apply/destroy"
+	@echo "  VAULT_SKIP_VERIFY    TLS verify toggle fallback (true/false) for plan/apply/destroy"
 	@echo ""
 
 # ─── Terraform ───────────────────────────────────────────────────────────────
@@ -45,13 +48,28 @@ validate: ## Validate Terraform configuration
 	terraform validate
 
 plan: ## Show Terraform execution plan
-	terraform plan
+	@TF_VAR_vault_address=$${TF_VAR_vault_address:-$${VAULT_ADDR:-$$(grep -E '^\s*vault_address\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)"/\1/' | head -1)}} && \
+	TF_VAR_vault_token=$${TF_VAR_vault_token:-$${VAULT_TOKEN:-$$(grep -E '^\s*vault_token\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)"/\1/' | head -1)}} && \
+	TF_VAR_vault_skip_verify=$${TF_VAR_vault_skip_verify:-$${VAULT_SKIP_VERIFY:-$$(grep -E '^\s*vault_skip_verify\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *\(.*\)/\1/' | tr -d ' ' | head -1)}} && \
+	if [ -z "$$TF_VAR_vault_address" ]; then echo "ERROR: Set VAULT_ADDR or TF_VAR_vault_address (or add vault_address to terraform.tfvars)."; exit 1; fi && \
+	if [ -z "$$TF_VAR_vault_token" ]; then echo "ERROR: Set VAULT_TOKEN or TF_VAR_vault_token (or add vault_token to terraform.tfvars)."; exit 1; fi && \
+	TF_VAR_vault_address="$$TF_VAR_vault_address" TF_VAR_vault_token="$$TF_VAR_vault_token" TF_VAR_vault_skip_verify="$${TF_VAR_vault_skip_verify:-false}" terraform plan
 
 apply: ## Apply Terraform configuration to Vault
-	terraform apply
+	@TF_VAR_vault_address=$${TF_VAR_vault_address:-$${VAULT_ADDR:-$$(grep -E '^\s*vault_address\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)"/\1/' | head -1)}} && \
+	TF_VAR_vault_token=$${TF_VAR_vault_token:-$${VAULT_TOKEN:-$$(grep -E '^\s*vault_token\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)"/\1/' | head -1)}} && \
+	TF_VAR_vault_skip_verify=$${TF_VAR_vault_skip_verify:-$${VAULT_SKIP_VERIFY:-$$(grep -E '^\s*vault_skip_verify\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *\(.*\)/\1/' | tr -d ' ' | head -1)}} && \
+	if [ -z "$$TF_VAR_vault_address" ]; then echo "ERROR: Set VAULT_ADDR or TF_VAR_vault_address (or add vault_address to terraform.tfvars)."; exit 1; fi && \
+	if [ -z "$$TF_VAR_vault_token" ]; then echo "ERROR: Set VAULT_TOKEN or TF_VAR_vault_token (or add vault_token to terraform.tfvars)."; exit 1; fi && \
+	TF_VAR_vault_address="$$TF_VAR_vault_address" TF_VAR_vault_token="$$TF_VAR_vault_token" TF_VAR_vault_skip_verify="$${TF_VAR_vault_skip_verify:-false}" terraform apply
 
 destroy: ## Destroy all Terraform-managed resources
-	terraform destroy
+	@TF_VAR_vault_address=$${TF_VAR_vault_address:-$${VAULT_ADDR:-$$(grep -E '^\s*vault_address\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)"/\1/' | head -1)}} && \
+	TF_VAR_vault_token=$${TF_VAR_vault_token:-$${VAULT_TOKEN:-$$(grep -E '^\s*vault_token\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *"\(.*\)"/\1/' | head -1)}} && \
+	TF_VAR_vault_skip_verify=$${TF_VAR_vault_skip_verify:-$${VAULT_SKIP_VERIFY:-$$(grep -E '^\s*vault_skip_verify\s*=' terraform.tfvars 2>/dev/null | sed 's/.*= *\(.*\)/\1/' | tr -d ' ' | head -1)}} && \
+	if [ -z "$$TF_VAR_vault_address" ]; then echo "ERROR: Set VAULT_ADDR or TF_VAR_vault_address (or add vault_address to terraform.tfvars)."; exit 1; fi && \
+	if [ -z "$$TF_VAR_vault_token" ]; then echo "ERROR: Set VAULT_TOKEN or TF_VAR_vault_token (or add vault_token to terraform.tfvars)."; exit 1; fi && \
+	TF_VAR_vault_address="$$TF_VAR_vault_address" TF_VAR_vault_token="$$TF_VAR_vault_token" TF_VAR_vault_skip_verify="$${TF_VAR_vault_skip_verify:-false}" terraform destroy
 
 # ─── SPIFFE verification ─────────────────────────────────────────────────────
 check-spiffe: check-discovery check-jwks ## Verify both SPIFFE discovery and JWKS endpoints

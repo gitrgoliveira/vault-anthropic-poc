@@ -1,5 +1,6 @@
 vault_address = "https://vault-cluster.vault.xxxxxxxx.aws.hashicorp.cloud:8200"
 vault_token   = "hvs.REPLACE_ME"
+vault_namespace = "admin"
 
 # Override the default environments map if needed:
 # environments = {

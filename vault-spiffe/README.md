@@ -42,6 +42,7 @@ You do not create, distribute, or store a static Anthropic API key.
 - [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.10
 - [Vault CLI](https://developer.hashicorp.com/vault/install) ≥ 1.12
 - A Vault Enterprise cluster with the SPIFFE secrets engine available
+    - HCP Vault does not yet support Vault 2.0.0 at this time.
 - An [Anthropic organization](https://console.anthropic.com) with API credits and Workload Identity Federation enabled
 - Python 3.9+ and `jq`
 

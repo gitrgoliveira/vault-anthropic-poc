@@ -1,6 +1,6 @@
 variable "vault_address" {
   type        = string
-  description = "HCP Vault cluster public URL (e.g. https://vault-cluster.vault.xxxxxxxx.aws.hashicorp.cloud:8200)."
+  description = "Vault cluster URL (for example, https://vault.example.com:8200). Set with TF_VAR_vault_address or use VAULT_ADDR via the Makefile wrappers."
 
   validation {
     condition     = startswith(var.vault_address, "https://")
@@ -15,14 +15,20 @@ variable "vault_address" {
 
 variable "vault_namespace" {
   type        = string
-  default     = "admin"
-  description = "HCP Vault namespace. Defaults to the HCP root namespace."
+  default     = ""
+  description = "Leave empty for OSS/dev mode or set to 'admin' for HCP Vault."
 }
 
 variable "vault_token" {
   type        = string
   ephemeral   = true
-  description = "Vault token with permissions to manage identity, auth, and policy resources. Never persisted to state or plan files."
+  description = "Vault token with permissions to manage identity, auth, and policy resources. Never persisted to state or plan files. Set with TF_VAR_vault_token or use VAULT_TOKEN via the Makefile wrappers."
+}
+
+variable "vault_skip_verify" {
+  type        = bool
+  default     = false
+  description = "Skip TLS certificate verification for Vault API calls (useful for local dev TLS). Set with TF_VAR_vault_skip_verify or VAULT_SKIP_VERIFY via the Makefile wrappers."
 }
 
 variable "anthropic_audience" {

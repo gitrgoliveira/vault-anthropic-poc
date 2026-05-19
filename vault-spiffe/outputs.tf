@@ -1,18 +1,22 @@
 # -----------------------------------------------------------------------------
 # SPIFFE OIDC discovery URLs — needed for Anthropic issuer registration
 # -----------------------------------------------------------------------------
+locals {
+  spiffe_issuer_base_url = "${var.vault_address}/v1/${join("/", compact([var.vault_namespace, vault_mount.spiffe.path]))}"
+}
+
 output "spiffe_issuer_url" {
-  value       = "${var.vault_address}/v1/${var.vault_namespace}/${vault_mount.spiffe.path}"
+  value       = local.spiffe_issuer_base_url
   description = "Register this as the Issuer URL in the Anthropic Claude Console."
 }
 
 output "spiffe_discovery_url" {
-  value       = "${var.vault_address}/v1/${var.vault_namespace}/${vault_mount.spiffe.path}/.well-known/openid-configuration"
+  value       = "${local.spiffe_issuer_base_url}/.well-known/openid-configuration"
   description = "OIDC discovery document URL for the SPIFFE JWT issuer."
 }
 
 output "spiffe_jwks_url" {
-  value       = "${var.vault_address}/v1/${var.vault_namespace}/${vault_mount.spiffe.path}/.well-known/keys"
+  value       = "${local.spiffe_issuer_base_url}/.well-known/keys"
   description = "JWKS URL containing the SPIFFE JWT signing keys."
 }
 
@@ -66,7 +70,7 @@ output "anthropic_console_instructions" {
 
     1. Go to Settings → Workload identity → Issuers tab
        - Name:       hcp-vault-spiffe
-       - Issuer URL: ${var.vault_address}/v1/${var.vault_namespace}/${vault_mount.spiffe.path}
+       - Issuer URL: ${local.spiffe_issuer_base_url}
        - JWKS mode:  inline (port 8200 requires inline; fetch keys with make check-jwks)
 
     2. Go to Settings → Service accounts

@@ -15,14 +15,20 @@ variable "vault_address" {
 
 variable "vault_namespace" {
   type        = string
-  default     = "admin"
+  default     = ""
   description = "HCP Vault namespace. Defaults to the HCP root namespace."
 }
 
 variable "vault_token" {
   type        = string
   ephemeral   = true
-  description = "Vault token with permissions to manage SPIFFE, auth, identity, and policy resources. Never persisted to state or plan files."
+  description = "Vault token with permissions to manage SPIFFE, auth, identity, and policy resources. Never persisted to state or plan files. Set with TF_VAR_vault_token or use VAULT_TOKEN via the Makefile wrappers."
+}
+
+variable "vault_skip_verify" {
+  type        = bool
+  default     = false
+  description = "Skip TLS certificate verification for Vault API calls (useful for local dev TLS). Set with TF_VAR_vault_skip_verify or VAULT_SKIP_VERIFY via the Makefile wrappers."
 }
 
 variable "trust_domain" {
